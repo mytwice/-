@@ -40,11 +40,34 @@
         }
         .result {
             margin-top: 20px;
-            font-weight: bold;
-            padding: 10px;
-            border: 1px solid #ccc;
+            padding: 20px;
             border-radius: 5px;
             background-color: #e9f5ff;
+            border: 1px solid #007bff; /* 테두리 색상 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 그림자 효과 */
+            font-size: 18px;
+            color: #0056b3; /* 제목 색상 */
+        }
+        .result h3 {
+            margin: 0 0 10px 0; /* 제목 마진 */
+            font-weight: normal;
+        }
+        .result p {
+            margin: 5px 0; /* 결과 문단 마진 */
+        }
+        .result .download-btn {
+            display: none; /* 기본적으로 숨김 */
+            background-color: #28a745;
+            padding: 10px 5px;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px; /* 간격 추가 */
+        }
+        .result .download-btn.active {
+            display: block; /* 활성화 시 보이게 함 */
         }
         button {
             display: block;
@@ -62,8 +85,8 @@
             background-color: #004494;
         }
         textarea {
-            width: 30%;
-            height: 70px;
+            width: 100%;
+            height: 120px;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -82,7 +105,7 @@
             bottom: 30px;
             display: flex;
             flex-direction: column;
-            gap: 0px;
+            gap: 5px; /* 버튼 간 간격 */
         }
         .floating-button button {
             width: 50px;
@@ -98,22 +121,13 @@
         .floating-button button:hover {
             background-color: #004494;
         }
-        .clear-btn {
-            margin-left: 10px;
-            padding: 5px 10px;
-            background-color: #ff6666;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
+        .goto-questions-btn {
+            width: 100%; /* 전체 너비 */
+            background-color: #17a2b8; /* 다른 색상 */
+            margin: 0; /* 기본 버튼 마진 제거 */
         }
-        .clear-btn:hover {
-            background-color: #ff4949;
-        }
-        .question-controls {
-            display: flex;
-            align-items: center;
+        .goto-questions-btn:hover {
+            background-color: #138496; /* 호버 색상 */
         }
     </style>
 </head>
@@ -123,12 +137,12 @@
 
 <!-- 정답 입력란 -->
 <h2>정답 입력</h2>
-<textarea id="answerKey" placeholder="1. (0)&#10;2. (0)&#10;... (형식 준수하여 입력)"></textarea>
+<textarea id="answerKey" placeholder="1. (0)&#10;2. (0)&#10;... (최대 50개 질문)"></textarea>
 
 <!-- 사용자 답안 입력란 -->
 <h2>사용자 답안 입력
     <div class="question-controls">
-        <label for="questionCount"></label>
+        <label for="questionCount">문제 개수:</label>
         <select id="questionCount">
             <option value="10">10개</option>
             <option value="20">20개</option>
@@ -141,6 +155,7 @@
             <option value="90">90개</option>
             <option value="100">100개</option>
         </select>
+        <button id="toggleScrollBtn" class="toggle-scroll-btn">자동 스크롤 켜기</button>
         <button id="clearBtn" class="clear-btn">전체 지우기</button>
     </div>
 </h2>
@@ -150,21 +165,29 @@
 <button id="submitBtn">채점하기</button>
 
 <!-- 결과 표시 영역 -->
-<div id="result"></div>
+<div id="result" class="result">
+    <p id="resultText"></p>
+    <button id="downloadBtn" class="download-btn">결과 다운로드</button>
+</div>
 
 <!-- 플로팅 버튼 -->
 <div class="floating-button">
     <button id="scrollTopBtn">↑</button>
+    <button id="gotoQuestionsBtn" class="goto-questions-btn">□</button>
     <button id="scrollBottomBtn">↓</button>
 </div>
 
 <script>
     // 기본 문제 수
     let totalQuestions = 10;
+    let autoScrollEnabled = false;
+    let lastClickedQuestion = null; // 마지막으로 클릭한 문제 저장
 
     // 페이지 로드 시 문제 생성
     function generateQuestions() {
         const questionsContainer = document.getElementById('questions');
+        const existingAnswers = Array.from(document.querySelectorAll('input[type="radio"]:checked'))
+            .map(radio => radio.value);
         questionsContainer.innerHTML = ''; // 기존 질문 삭제
 
         // 라디오 버튼으로 문제 생성
@@ -172,12 +195,19 @@
             questionsContainer.innerHTML += `
                 <div class="question" id="question${i}">
                     ${i}. 
-                    <label><input type="radio" name="question${i}" value="1" required> 1</label>
-                    <label><input type="radio" name="question${i}" value="2"> 2</label>
-                    <label><input type="radio" name="question${i}" value="3"> 3</label>
-                    <label><input type="radio" name="question${i}" value="4"> 4</label>
+                    <label><input type="radio" name="question${i}" value="1" ${existingAnswers[i - 1] === "1" ? "checked" : ""}> 1</label>
+                    <label><input type="radio" name="question${i}" value="2" ${existingAnswers[i - 1] === "2" ? "checked" : ""}> 2</label>
+                    <label><input type="radio" name="question${i}" value="3" ${existingAnswers[i - 1] === "3" ? "checked" : ""}> 3</label>
+                    <label><input type="radio" name="question${i}" value="4" ${existingAnswers[i - 1] === "4" ? "checked" : ""}> 4</label>
                 </div>
             `;
+        }
+        
+        // 자동 스크롤 기능이 활성화된 경우 마지막 문제로 스크롤
+        if (autoScrollEnabled && lastClickedQuestion) {
+            const questionElement = document.getElementById(lastClickedQuestion);
+            const middleOfScreen = (window.innerHeight / 2) - (questionElement.offsetHeight / 2);
+            window.scrollTo({ top: questionElement.offsetTop - middleOfScreen, behavior: 'smooth' });
         }
     }
 
@@ -202,7 +232,7 @@
         // 모든 질문의 색상 초기화
         for (let i = 1; i <= totalQuestions; i++) {
             const questionElement = document.getElementById(`question${i}`);
-            questionElement.classList.remove('correct', 'incorrect'); // 기존 색상 초기화
+            questionElement.classList.remove('correct', 'incorrect');
         }
 
         // 채점 로직
@@ -223,17 +253,48 @@
         }
 
         // 결과 출력
-        let resultMessage = `채점 결과: ${score} / ${totalQuestions}`;
+        let resultMessage = `<h3>채점 결과</h3>`;
+        resultMessage += `<p>총 점수: <strong>${score}</strong> / ${totalQuestions}</p>`;
         if (incorrectAnswers.length > 0) {
-            resultMessage += `\n틀린 문제 번호: ${incorrectAnswers.join(', ')}`;
+            resultMessage += `<p>틀린 문제 번호: <strong>${incorrectAnswers.join(', ')}</strong></p>`;
+        } else {
+            resultMessage += `<p>모든 문제를 맞췄습니다! 🎉</p>`;
         }
-        document.getElementById('result').innerText = resultMessage;
+        document.getElementById('resultText').innerHTML = resultMessage;
+
+        // 다운로드 버튼 활성화
+        document.getElementById('downloadBtn').classList.add('active');
+
+        // 스크롤 이동
+        if (autoScrollEnabled) {
+            const questionElement = document.getElementById(`question${totalQuestions}`);
+            const middleOfScreen = (window.innerHeight / 2) - (questionElement.offsetHeight / 2);
+            window.scrollTo({ top: questionElement.offsetTop - middleOfScreen, behavior: 'smooth' });
+        }
     });
 
     // 전체 지우기 버튼 이벤트
     document.getElementById('clearBtn').addEventListener('click', function() {
-        const radioButtons = document.querySelectorAll('input[type="radio"]');
-        radioButtons.forEach(radio => radio.checked = false);
+        document.getElementById('answerKey').value = '';
+        document.querySelectorAll('input[type="radio"]:checked').forEach(radio => radio.checked = false);
+        document.getElementById('resultText').innerHTML = '';
+        document.getElementById('downloadBtn').classList.remove('active'); // 다운로드 버튼 비활성화
+    });
+
+    // 자동 스크롤 토글 버튼 이벤트
+    document.getElementById('toggleScrollBtn').addEventListener('click', function() {
+        autoScrollEnabled = !autoScrollEnabled;
+        this.innerText = autoScrollEnabled ? '자동 스크롤 끄기' : '자동 스크롤 켜기';
+    });
+
+    // 결과 다운로드 버튼 이벤트
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+        const resultText = document.getElementById('resultText').innerText;
+        const blob = new Blob([resultText], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = '채점결과.txt';
+        link.click();
     });
 
     // 스크롤 버튼 이벤트
@@ -243,6 +304,28 @@
 
     document.getElementById('scrollBottomBtn').addEventListener('click', function() {
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // 문제 클릭 시 자동 스크롤 및 마지막 문제 저장
+    document.addEventListener('change', function(event) {
+        if (event.target.matches('input[type="radio"]')) {
+            const questionElement = event.target.closest('.question');
+            lastClickedQuestion = questionElement.id; // 마지막 클릭한 문제 저장
+
+            if (autoScrollEnabled) {
+                const middleOfScreen = (window.innerHeight / 2) - (questionElement.offsetHeight / 2);
+                window.scrollTo({ top: questionElement.offsetTop - middleOfScreen, behavior: 'smooth' }); // 중앙으로 스크롤
+            }
+        }
+    });
+
+    // 문제로 가기 버튼 이벤트
+    document.getElementById('gotoQuestionsBtn').addEventListener('click', function() {
+        if (lastClickedQuestion) {
+            const questionElement = document.getElementById(lastClickedQuestion);
+            const middleOfScreen = (window.innerHeight / 2) - (questionElement.offsetHeight / 2);
+            window.scrollTo({ top: questionElement.offsetTop - middleOfScreen, behavior: 'smooth' });
+        }
     });
 </script>
 
