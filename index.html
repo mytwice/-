@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정답 채점기</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #0056b3;
+        }
+        h2 {
+            margin-top: 20px;
+            color: #444;
+        }
+        .question {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+        }
+        .question label {
+            margin-right: 15px;
+            cursor: pointer;
+        }
+        .question.incorrect {
+            background-color: #ffdddd; /* 틀린 문제 배경색 */
+            border-color: #ff0000; /* 틀린 문제 경계색 */
+        }
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #e9f5ff;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #004494;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+            font-size: 16px;
+        }
+        #result {
+            white-space: pre-wrap; /* Preserve line breaks in result */
+        }
+        /* 플로팅 버튼 스타일 */
+        .floating-button {
+            position: fixed;
+            right: 20px;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 0px;
+        }
+        .floating-button button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .floating-button button:hover {
+            background-color: #004494;
+        }
+    </style>
+</head>
+<body>
+
+<h1>정답 채점기</h1>
+
+<!-- 정답 입력란 -->
+<h2>정답 입력</h2>
+<textarea id="answerKey" placeholder="1. (0)&#10;2. (0)&#10;... (최대 50개 질문)"></textarea>
+
+<!-- 사용자 답안 입력란 -->
+<h2>사용자 답안 입력</h2>
+<div id="questions"></div>
+
+<!-- 제출 버튼 -->
+<button id="submitBtn">채점하기</button>
+
+<!-- 결과 표시 영역 -->
+<div id="result"></div>
+
+<!-- 플로팅 버튼 -->
+<div class="floating-button">
+    <button id="scrollTopBtn">↑</button>
+    <button id="scrollBottomBtn">↓</button>
+</div>
+
+<script>
+    // 문제 수
+    const totalQuestions = 50;
+
+    // 페이지 로드 시 문제 생성
+    window.onload = function() {
+        const questionsContainer = document.getElementById('questions');
+        
+        // 라디오 버튼으로 문제 생성
+        for (let i = 1; i <= totalQuestions; i++) {
+            questionsContainer.innerHTML += `
+                <div class="question" id="question${i}">
+                    ${i}. 
+                    <label><input type="radio" name="question${i}" value="1" required> 1</label>
+                    <label><input type="radio" name="question${i}" value="2"> 2</label>
+                    <label><input type="radio" name="question${i}" value="3"> 3</label>
+                    <label><input type="radio" name="question${i}" value="4"> 4</label>
+                </div>
+            `;
+        }
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', function() {
+        // 정답 가져오기
+        const answerKey = document.getElementById('answerKey').value.trim().split('\n').map(line => line.match(/\((\d)\)/)[1]);
+
+        let score = 0;
+        const incorrectAnswers = [];
+        
+        // 채점 로직
+        for (let i = 1; i <= totalQuestions; i++) {
+            const selectedOption = document.querySelector(`input[name="question${i}"]:checked`);
+            const questionElement = document.getElementById(`question${i}`);
+            if (selectedOption) {
+                const userAnswer = selectedOption.value;
+                if (answerKey[i - 1] === userAnswer) {
+                    score++;
+                } else {
+                    incorrectAnswers.push(i); // 틀린 문제 번호 추가
+                    questionElement.classList.add('incorrect'); // 틀린 문제 스타일 추가
+                }
+            }
+            // 선택하지 않은 경우는 아무 처리도 하지 않음
+        }
+
+        // 결과 출력
+        let resultMessage = `채점 결과: ${score} / ${totalQuestions}`;
+        if (incorrectAnswers.length > 0) {
+            resultMessage += `\n틀린 문제 번호: ${incorrectAnswers.join(', ')}`;
+        }
+        document.getElementById('result').innerText = resultMessage;
+    });
+
+    // 스크롤 버튼 이벤트
+    document.getElementById('scrollTopBtn').addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.getElementById('scrollBottomBtn').addEventListener('click', function() {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+</script>
+
+</body>
+</html>
