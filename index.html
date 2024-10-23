@@ -129,6 +129,14 @@
         .goto-questions-btn:hover {
             background-color: #138496; /* 호버 색상 */
         }
+
+        .clear-btn {
+            background-color: #dc3545; /* 빨간색 배경 */
+        }
+
+        .clear-btn:hover {
+            background-color: #c82333; /* 호버 시 색상 변경 */
+        }
     </style>
 </head>
 <body>
@@ -319,6 +327,13 @@
         }
     });
 
+    // 실수 이탈방지
+        window.onbeforeunload = function (event) {
+        const confirmationMessage = '사이트를 떠나시겠습니까?'; // 사용자에게 보여줄 메시지
+        event.returnValue = confirmationMessage; // 대부분의 브라우저에서 사용
+        return confirmationMessage; // Firefox에서도 동작하도록 반환
+    };
+    
     // 문제로 가기 버튼 이벤트
     document.getElementById('gotoQuestionsBtn').addEventListener('click', function() {
         if (lastClickedQuestion) {
