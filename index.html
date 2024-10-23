@@ -34,6 +34,10 @@
             background-color: #ffdddd; /* 틀린 문제 배경색 */
             border-color: #ff0000; /* 틀린 문제 경계색 */
         }
+        .question.correct {
+            background-color: #d4edda; /* 맞은 문제 배경색 */
+            border-color: #28a745; /* 맞은 문제 경계색 */
+        }
         .result {
             margin-top: 20px;
             font-weight: bold;
@@ -58,13 +62,15 @@
             background-color: #004494;
         }
         textarea {
-            width: 100%;
-            height: 120px;
+            width: 30%;
+            height: 70px;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            resize: none;
             font-size: 16px;
+        }
+        #answerKey {
+            resize: both; /* 크기 조절 가능하게 설정 */
         }
         #result {
             white-space: pre-wrap; /* Preserve line breaks in result */
@@ -92,6 +98,23 @@
         .floating-button button:hover {
             background-color: #004494;
         }
+        .clear-btn {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #ff6666;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .clear-btn:hover {
+            background-color: #ff4949;
+        }
+        .question-controls {
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -100,10 +123,27 @@
 
 <!-- 정답 입력란 -->
 <h2>정답 입력</h2>
-<textarea id="answerKey" placeholder="1. (0)&#10;2. (0)&#10;... (최대 50개 질문)"></textarea>
+<textarea id="answerKey" placeholder="1. (0)&#10;2. (0)&#10;... (형식 준수하여 입력)"></textarea>
 
 <!-- 사용자 답안 입력란 -->
-<h2>사용자 답안 입력</h2>
+<h2>사용자 답안 입력
+    <div class="question-controls">
+        <label for="questionCount"></label>
+        <select id="questionCount">
+            <option value="10">10개</option>
+            <option value="20">20개</option>
+            <option value="30">30개</option>
+            <option value="40">40개</option>
+            <option value="50">50개</option>
+            <option value="60">60개</option>
+            <option value="70">70개</option>
+            <option value="80">80개</option>
+            <option value="90">90개</option>
+            <option value="100">100개</option>
+        </select>
+        <button id="clearBtn" class="clear-btn">전체 지우기</button>
+    </div>
+</h2>
 <div id="questions"></div>
 
 <!-- 제출 버튼 -->
@@ -119,13 +159,14 @@
 </div>
 
 <script>
-    // 문제 수
-    const totalQuestions = 50;
+    // 기본 문제 수
+    let totalQuestions = 10;
 
     // 페이지 로드 시 문제 생성
-    window.onload = function() {
+    function generateQuestions() {
         const questionsContainer = document.getElementById('questions');
-        
+        questionsContainer.innerHTML = ''; // 기존 질문 삭제
+
         // 라디오 버튼으로 문제 생성
         for (let i = 1; i <= totalQuestions; i++) {
             questionsContainer.innerHTML += `
@@ -140,13 +181,30 @@
         }
     }
 
+    window.onload = function() {
+        generateQuestions();
+    };
+
+    // 문제 개수 변경 이벤트 처리
+    document.getElementById('questionCount').addEventListener('change', function() {
+        totalQuestions = parseInt(this.value);
+        generateQuestions();
+    });
+
+    // 채점하기 버튼 이벤트
     document.getElementById('submitBtn').addEventListener('click', function() {
         // 정답 가져오기
         const answerKey = document.getElementById('answerKey').value.trim().split('\n').map(line => line.match(/\((\d)\)/)[1]);
 
         let score = 0;
         const incorrectAnswers = [];
-        
+
+        // 모든 질문의 색상 초기화
+        for (let i = 1; i <= totalQuestions; i++) {
+            const questionElement = document.getElementById(`question${i}`);
+            questionElement.classList.remove('correct', 'incorrect'); // 기존 색상 초기화
+        }
+
         // 채점 로직
         for (let i = 1; i <= totalQuestions; i++) {
             const selectedOption = document.querySelector(`input[name="question${i}"]:checked`);
@@ -155,6 +213,7 @@
                 const userAnswer = selectedOption.value;
                 if (answerKey[i - 1] === userAnswer) {
                     score++;
+                    questionElement.classList.add('correct'); // 맞은 문제 스타일 추가
                 } else {
                     incorrectAnswers.push(i); // 틀린 문제 번호 추가
                     questionElement.classList.add('incorrect'); // 틀린 문제 스타일 추가
@@ -169,6 +228,12 @@
             resultMessage += `\n틀린 문제 번호: ${incorrectAnswers.join(', ')}`;
         }
         document.getElementById('result').innerText = resultMessage;
+    });
+
+    // 전체 지우기 버튼 이벤트
+    document.getElementById('clearBtn').addEventListener('click', function() {
+        const radioButtons = document.querySelectorAll('input[type="radio"]');
+        radioButtons.forEach(radio => radio.checked = false);
     });
 
     // 스크롤 버튼 이벤트
